@@ -1,0 +1,118 @@
+--[[
+███████╗██╗██████╗  ██████╗ ██╗    ██╗ █████╗ ██████╗ ███████╗
+██╔════╝██║██╔══██╗██╔═══██╗██║    ██║██╔══██╗██╔══██╗██╔════╝
+█████╗  ██║██████╔╝██║   ██║██║ █╗ ██║███████║██████╔╝█████╗  
+██╔══╝  ██║██╔══██╗██║   ██║██║███╗██║██╔══██║██╔══██╗██╔══╝  
+██║     ██║██║  ██║╚██████╔╝╚███╔███╔╝██║  ██║██║  ██║███████╗
+╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+                                                              
+]]
+game.StarterGui:SetCore("SendNotification", { Title = "Firoware", Text = "Loading . . ." })
+wait(1)
+game.StarterGui:SetCore("SendNotification", { Title = "Firoware", Text = "Authenticating.." })
+wait(1)
+game.StarterGui:SetCore("SendNotification", { Title = "Firoware", Text = "Setting Up..." })
+wait(1)
+game.StarterGui:SetCore("SendNotification", { Title = "Firoware", Text = "Done!" })
+wait(0.5)
+game.StarterGui:SetCore("SendNotification", { Title = "Firoware", Text = "made by @vrwx. on discord!" })
+
+-- Toggle
+getgenv().Target = true
+-- Configuration
+getgenv().Key = Enum.KeyCode.Q
+getgenv().Prediction = 0.12405
+getgenv().ChatMode = false
+getgenv().NotifMode = true
+getgenv().PartMode = true
+getgenv().AirshotFunccc = true
+getgenv().Partz = "HumanoidRootPart"
+getgenv().AutoPrediction = false
+
+local plr = game.Players.LocalPlayer
+local mouse = plr:GetMouse()
+local Runserv = game:GetService("RunService")
+local CC = workspace.CurrentCamera
+local Locking = false
+
+-- Tracer Visualization
+local Tracer = Instance.new("Part", workspace)
+Tracer.Anchored = true
+Tracer.CanCollide = false
+Tracer.Transparency = 0.8
+Tracer.Size = Vector3.new(14,14,14)
+Tracer.Color = Color3.fromRGB(255,7,255)
+
+-- Circle Indicator
+local circle = Drawing.new("Circle")
+circle.Color = Color3.fromRGB(171,0,255)
+circle.Thickness = 0
+circle.NumSides = 732
+circle.Radius = 120
+circle.Transparency = 0.7
+circle.Visible = true
+circle.Filled = false
+
+Runserv.RenderStepped:Connect(function()
+    circle.Position = Vector2.new(mouse.X, mouse.Y + 35)
+end)
+
+-- Toggle Target Locking
+local function getClosestPlayerToCursor()
+    local closestPlayer, shortestDistance = nil, circle.Radius
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= plr and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+            local pos = CC:WorldToViewportPoint(v.Character.PrimaryPart.Position)
+            local magnitude = (Vector2.new(pos.X, pos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+            if magnitude < shortestDistance then
+                closestPlayer, shortestDistance = v, magnitude
+            end
+        end
+    end
+    return closestPlayer
+end
+
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == getgenv().Key then
+        Locking = not Locking
+        local Plr = getClosestPlayerToCursor()
+        if Locking then
+            if getgenv().NotifMode then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "", Text = "Target: " .. tostring(Plr.Character.Humanoid.DisplayName), Duration = 5
+                })
+            end
+        else
+            if getgenv().NotifMode then
+                game.StarterGui:SetCore("SendNotification", { Title = "", Text = "Unlocked", Duration = 5 })
+            end
+        end
+    end
+end)
+
+-- Auto Prediction Based on Ping
+if not getgenv().AutoPrediction then
+    while task.wait() do
+        local ping = tonumber(string.split(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString(), '(')[1])
+        if ping then
+            getgenv().Prediction = math.clamp(0.131 + (ping - 60) * 0.002, 0.131, 0.16)
+        end
+    end
+end
+
+-- Aim Position Updates
+Runserv.Stepped:Connect(function()
+    if Locking and Plr and Plr.Character and Plr.Character:FindFirstChild(getgenv().Partz) then
+        Tracer.CFrame = CFrame.new(Plr.Character[getgenv().Partz].Position + (Plr.Character[getgenv().Partz].Velocity * getgenv().Prediction))
+    else
+        Tracer.CFrame = CFrame.new(0, 9999, 0)
+    end
+end)
+
+-- Airstot Detection
+if getgenv().AirshotFunccc then
+    plr.Character:WaitForChild("Humanoid").StateChanged:Connect(function(_, new)
+        getgenv().Partz = new == Enum.HumanoidStateType.Freefall and "RightFoot" or "LowerTorso"
+    end)
+end
